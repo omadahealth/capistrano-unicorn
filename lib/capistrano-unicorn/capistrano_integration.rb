@@ -12,6 +12,7 @@ module CapistranoUnicorn
       'unicorn:start',
       'unicorn:stop',
       'unicorn:restart',
+      'unicorn:rolling_restart',
       'unicorn:duplicate',
       'unicorn:reload',
       'unicorn:shutdown',
@@ -72,6 +73,22 @@ module CapistranoUnicorn
             run start_unicorn
           end
 
+          task :restart, :roles => unicorn_roles, :except => {:no_release => true} do
+
+            run <<-END, max_hosts: 1
+              #{kill_unicorn('QUIT')}
+              while #{unicorn_is_running?}; do
+                sleep 1;
+              done;
+
+              #{start_unicorn}
+              echo "Giving the machine time to get back into ELB";
+              sleep 30
+            END
+
+          end
+
+
           desc 'Stop Unicorn'
           task :stop, :roles => unicorn_roles, :except => {:no_release => true} do
             run kill_unicorn('QUIT')
@@ -83,7 +100,7 @@ module CapistranoUnicorn
           end
 
           desc 'Restart Unicorn'
-          task :restart, :roles => unicorn_roles, :except => {:no_release => true} do
+          task :rolling_restart, :roles => unicorn_roles,  :except => {:no_release => true} do
             run <<-END
               #{duplicate_unicorn}
 
