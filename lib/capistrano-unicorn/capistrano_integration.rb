@@ -75,17 +75,16 @@ module CapistranoUnicorn
 
           task :restart, :roles => unicorn_roles, :except => {:no_release => true} do
 
-            run <<-END, max_hosts: 1
-              #{kill_unicorn('QUIT')}
-              while #{unicorn_is_running?}; do
-                sleep 1;
-              done;
-
-              #{start_unicorn}
-              echo "Giving the machine time to get back into ELB";
-              sleep 30
+            ## make existing unicorn 'old'
+            run <<-END
+              mv #{unicorn_pid} #{old_unicorn_pid}
             END
 
+            # start new unicorn
+            unicorn.start
+
+            # stop old unicorn
+            unicorn.stop_old
           end
 
 
@@ -93,6 +92,16 @@ module CapistranoUnicorn
           task :stop, :roles => unicorn_roles, :except => {:no_release => true} do
             run kill_unicorn('QUIT')
           end
+
+          desc 'Stop old Unicorn'
+          task :stop_old, :roles => unicorn_roles, :except => {:no_release => true} do
+            run <<-END
+              if #{old_unicorn_is_running?}; then
+                #{unicorn_send_signal('QUIT', get_old_unicorn_pid)};
+              fi;
+            END
+          end
+
 
           desc 'Immediately shutdown Unicorn'
           task :shutdown, :roles => unicorn_roles, :except => {:no_release => true} do
