@@ -77,7 +77,9 @@ module CapistranoUnicorn
 
             ## make existing unicorn 'old'
             run <<-END
-              mv #{unicorn_pid} #{old_unicorn_pid}
+              if [ -f #{unicorn_pid} ]; then
+                mv #{unicorn_pid} #{old_unicorn_pid};
+              fi;
             END
 
             # start new unicorn
@@ -96,8 +98,10 @@ module CapistranoUnicorn
           desc 'Stop old Unicorn'
           task :stop_old, :roles => unicorn_roles, :except => {:no_release => true} do
             run <<-END
-              if #{old_unicorn_is_running?}; then
-                #{unicorn_send_signal('QUIT', get_old_unicorn_pid)};
+              if [ -e #{old_unicorn_pid} ]; then
+                if #{old_unicorn_is_running?}; then
+                  #{unicorn_send_signal('QUIT', get_old_unicorn_pid)};
+                fi;
               fi;
             END
           end
